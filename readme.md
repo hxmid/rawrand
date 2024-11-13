@@ -42,19 +42,19 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 ## planned features
 
-    - [ ] key press triggered sensitivity switch
-        - rather than having the sensitivities switch on time interval, have it mapped to a keybind. this will make it less jarring mid-round or mid-gunfight
+- [ ] key press triggered sensitivity switch
+    - rather than having the sensitivities switch on time interval, have it mapped to a keybind. this will make it less jarring mid-round or mid-gunfight
 
-    - [ ] twitch integration
-        - allow chatters to give a sens and it to automatically set your sens to that for x seconds
+- [ ] twitch integration
+    - allow chatters to give a sens and it to automatically set your sens to that for x seconds
 
-    - [ ] game state monitoring
-        - (possibly leveraging overwolf,) monitor the game's gamestate to allow for sensitivity changes to happen at the end of each round
+- [ ] game state monitoring
+    - (possibly leveraging overwolf) monitor the game's gamestate to allow for sensitivity changes to happen at the end of each round
 
-    - [ ] a proper user interface, similar to rawaccel's
-        - [ ] learn how to make ui (no idea how at this point in time LOL)
-        - [ ] input values on left side, (e.g. min, max, time interval, etc)
-        - [ ] plotted graph of generated senses on right side (like how rawaccel has a visualisation of your curve)
+- [ ] a proper user interface, similar to rawaccel's
+    - [ ] learn how to make ui (no idea how at this point in time LOL)
+    - [ ] input values on left side, (e.g. min, max, time interval, etc)
+    - [ ] plotted graph of generated senses on right side (like how rawaccel has a visualisation of your curve)
 
 ## installation
 
@@ -62,9 +62,11 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 2. install python (i'm using 3.11.7)
 
-3. clone the repo into your rawaccel folder
+3. install rawaccel
+
+4. clone the repo into your rawaccel folder
 ```
-rawaccel/
+git clone https://github.com/hxmid/rawrand.git
 ```
 
 the folder structure should look something like this:
@@ -79,9 +81,43 @@ rawaccel/
     ...
 ```
 
-4. cd into the rawrand folder and install the pip packages
+5. cd into the rawrand folder and install the pip packages
 
 ```
 cd rawrand
-pip install requirements.txt
+pip install -r requirements.txt
+```
+
+6. run rawaccel at least once so that settings.json is generated and then copy it into the `rawrand` folder
+
+7. run the randomiser from the `rawrand` folder with python
+
+```
+python rawrand.py <args>
+```
+
+for an overview on arguments you can use the `--help` argument
+
+```
+$ python rawrand.py --help
+usage: rawrand.py [-h] [--interp] --sens SENS --min MIN --max MAX [--num NUM] [--time TIME] [--mode {0,1,2,3}]
+
+uses rawaccel to randomise your sens
+
+options:
+  -h, --help            show this help message and exit
+  --interp, -i          enable interpolation to make sens changes less jarring
+  --sens SENS, -s SENS  your current in-game sens
+  --min MIN             the minimum sens you want the randomiser to set your sens to
+  --max MAX             the maximum sens you want the randomiser to set your sens to
+  --num NUM, -n NUM     the number of senses you want to be generated
+  --time TIME, -t TIME  how long (in seconds) each sens should be set for (min. 1.5)
+  --mode {0,1,2,3}, -m {0,1,2,3}
+                        changes the mode of sens generation [ 0: random (default), 1: truncated normal dist, 2: fixed mean random, 3: lognormal ]
+```
+
+this is my current config (as of 13/11/24)
+
+```
+python rawrand.py --sens .45 --min .2 --max .97 --mode 2 --time 10
 ```
