@@ -98,8 +98,8 @@ parser.add_argument("--interp", "-i", action = "store_true",  dest = "interp", h
 parser.add_argument("--sens",   "-s", dest = "sens",    type = float,   default = 0.300,    required = True,    help = "your current in-game sens")
 parser.add_argument("--min",          dest = "min",     type = float,   default = 0.200,    required = True,    help = "the minimum sens you want the randomiser to set your sens to")
 parser.add_argument("--max",          dest = "max",     type = float,   default = 0.800,    required = True,    help = "the maximum sens you want the randomiser to set your sens to")
-parser.add_argument("--num",    "-n", dest = "num",     type = int,     default =   250,    required = False,   help = "the number of senses you want to be generated")
-parser.add_argument("--time",   "-t", dest = "time",    type = float,   default =    15,    required = False,   help = "how long (in seconds) each sens should be set for (min. 1.5)")
+parser.add_argument("--num",    "-n", dest = "num",     type = int,     default =   500,    required = False,   help = "the number of senses you want to be generated")
+parser.add_argument("--time",   "-t", dest = "time",    type = float,   default =    90,    required = False,   help = "how long (in seconds) each sens should be set for (min. 1.5)")
 parser.add_argument("--mode",   "-m", dest = "mode",    type = int,     default =     0,    required = False,
                         help = "changes the mode of sens generation [ 0: random (default), 1: truncated normal dist, 2: fixed mean random, 3: lognormal ]",
                         choices = [0, 1, 2, 3]
@@ -121,6 +121,7 @@ if (args.time < 1.5):
 
 sens_t.BASE_SENS = args.sens
 
+RAWACCEL_DELAY = 1.2
 
 def main() -> None:
     global DEFAULT_MULT
@@ -155,26 +156,30 @@ def main() -> None:
     print( f"max -> {sens_t.game_sens(max(senses)) :.3f}" )
     print( f"min -> {sens_t.game_sens(min(senses)) :.3f}" )
 
-    senses = [ sens_t(sens, args.time) for sens in senses ]
-    senses = deque(senses)
-
+    senses = deque([ sens_t(sens, args.time) for sens in senses ])
+    prev2 = prev = sens = sens_t(1, args.time)
     try:
         while True:
+            prev2 = prev
+            prev = sens
             sens = senses.popleft()
             senses.append(sens)
 
             set_sens(sens.sens)
-            sleep(1) # gotta account for rawaccel's built in delay
 
-            print(f"\tcurrent in-game sens: {sens_t.game_sens(sens.sens) :.3f} for {sens.time:.1f}s", end = "\r")
-            sleep(sens.time - 1)
+            for ms in range(int((sens.time) * 10) + 1):
+                if ms < (RAWACCEL_DELAY * 10):
+                    print(f"\tcurrent in-game sens: {sens_t.game_sens(prev.sens) :.3f} for {RAWACCEL_DELAY - (ms/10):.1f}s (prev: {sens_t.game_sens(prev2.sens) :.3f})", end = "\r")
+                else:
+                    print(f"\tcurrent in-game sens: {sens_t.game_sens(sens.sens) :.3f} for {sens.time + RAWACCEL_DELAY - (ms/10):.1f}s (prev: {sens_t.game_sens(prev.sens) :.3f})", end = "\r")
+                sleep(.1)
 
     except KeyboardInterrupt:
         return
 
 
 def on_exit() -> None:
-    subprocess.run("reset.bat", stdout = subprocess.DEVNULL);
+    subprocess.Popen("reset.bat", stdout = subprocess.DEVNULL);
 atexit.register(on_exit)
 
 

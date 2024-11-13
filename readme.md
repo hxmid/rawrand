@@ -124,7 +124,7 @@ options:
 this is my current config (as of 13th november 2024)
 
 ```
-python rawrand.py --sens .45 --min .2 --max .97 --time 5 --mode 0
+python rawrand.py --sens .45 --min .2 --max .97 --time 5 --mode 0 --num 500
 ```
 
 once you find some settings that you like, just make a .bat file and run using the `wrapper.pyw` file instead of the actual `rawrand.py` file
@@ -133,5 +133,16 @@ we use a wrapper so that your sens auto-resets after you close the program, rega
 
 ```bat
 @echo off
-start /B "" "pythonw" "wrapper.pyw" --sens .45 --min .2 --max .97 --time 5 --mode 0
+start /B "" "pythonw" "wrapper.pyw" --sens .45 --min .2 --max .97 --time 5 --mode 0 --num 500
 ```
+
+## updating
+
+if you used git, just do the following
+
+```
+git fetch
+git pull
+```
+
+make sure to read the readme file, there might be some other changes / new features
