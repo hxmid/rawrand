@@ -56,6 +56,9 @@ random base sensitivity multipliers are generated and then written to the rawacc
     - [ ] input values on left side, (e.g. min, max, time interval, etc)
     - [ ] plotted graph of generated senses on right side (like how rawaccel has a visualisation of your curve)
 
+- [ ] installer embedded python
+    - just so you don't have to manually install everything, should quicken the process dramatically
+
 ## installation
 
 1. install git for windows
@@ -75,6 +78,7 @@ the folder structure should look something like this:
 rawaccel/
     rawrand/
         rawrand.py
+        wrapper.py
         ...
     rawaccel.exe
     writer.exe
@@ -91,6 +95,7 @@ pip install -r requirements.txt
 6. run rawaccel at least once so that settings.json is generated and then copy it into the `rawrand` folder
 
 7. run the randomiser from the `rawrand` folder with python
+
 
 ```
 python rawrand.py <args>
@@ -116,8 +121,17 @@ options:
                         changes the mode of sens generation [ 0: random (default), 1: truncated normal dist, 2: fixed mean random, 3: lognormal ]
 ```
 
-this is my current config (as of 13/11/24)
+this is my current config (as of 13th november 2024)
 
 ```
 python rawrand.py --sens .45 --min .2 --max .97 --mode 2 --time 10
+```
+
+once you find some settings that you like, just make a .bat file using the wrapper instead of the actual rawrand.py file.
+
+we use a wrapper so that your sens auto-resets after you close the program, regardless of whether you accidentally close the terminal window instead of
+
+```bat
+@echo off
+start /B "" "pythonw" "wrapper.pyw" --sens .45 --min .15 --max .97 --time 2 --mode 0
 ```
