@@ -131,6 +131,8 @@ once you find some settings that you like, just make a .bat file and run using t
 
 we use a wrapper so that your sens auto-resets after you close the program, regardless of whether you accidentally close the terminal window instead of
 
+e.g.
+
 ```bat
 @echo off
 start /B "" "pythonw" "wrapper.pyw" --sens .45 --min .2 --max .97 --time 5 --mode 0 --num 500

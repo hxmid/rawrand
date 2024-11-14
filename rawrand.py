@@ -167,9 +167,9 @@ def main() -> None:
 
             set_sens(sens.sens)
 
-            for ms in range(int((sens.time) * 10) + 1):
+            for ms in range(int((sens.time) * 10)):
                 if ms < (RAWACCEL_DELAY * 10):
-                    print(f"\tcurrent in-game sens: {sens_t.game_sens(prev.sens) :.3f} for {RAWACCEL_DELAY - (ms/10):.1f}s (prev: {sens_t.game_sens(prev2.sens) :.3f})", end = "\r")
+                    print(f"\tcurrent in-game sens: {sens_t.game_sens(prev.sens) :.3f} for {abs(RAWACCEL_DELAY - (ms/10) - .1):.1f}s (prev: {sens_t.game_sens(prev2.sens) :.3f})", end = "\r")
                 else:
                     print(f"\tcurrent in-game sens: {sens_t.game_sens(sens.sens) :.3f} for {sens.time + RAWACCEL_DELAY - (ms/10):.1f}s (prev: {sens_t.game_sens(prev.sens) :.3f})", end = "\r")
                 sleep(.1)
