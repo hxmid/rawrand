@@ -24,21 +24,23 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 - different sensitivity randomisation methods:
 
-    - 0. true random
+    - 1. true random
 
-    - 1. truncated normal distribution
+    - 2. truncated normal distribution
         - should have the average sensitivity closer to your base sens
 
-    - 2. fixed mean randomisation
+    - 3. fixed mean randomisation
         - keeps the mean of the generated sensitivities very close to your base sens, within 5%
 
-    - 3. log normal
+    - 4. log normal
 
 - sensitivity interpolation, smoothing out transitions between each sens
 
-- anticheat compliant (assuming the anticheat allows for rawaccel to be run)
+- anticheat compliant (assuming the anticheat allows rawaccel)
 
-- (relatively) intuitive use
+- game agnostic, due to it only needing a base sens, and min/max sens range
+
+- intuitive use
 
 ## planned features
 
@@ -49,15 +51,14 @@ random base sensitivity multipliers are generated and then written to the rawacc
     - allow chatters to give a sens and it to automatically set your sens to that for x seconds
 
 - [ ] game state monitoring
-    - (possibly leveraging overwolf) monitor the game's gamestate to allow for sensitivity changes to happen at the end of each round
+    - possibly leveraging overwolf's api, monitor the game's gamestate to allow for sensitivity changes to happen at the end of each round
 
-- [ ] a proper user interface, similar to rawaccel's
-    - [ ] learn how to make ui (no idea how at this point in time LOL)
-    - [ ] input values on left side, (e.g. min, max, time interval, etc)
-    - [ ] plotted graph of generated senses on right side (like how rawaccel has a visualisation of your curve)
+- [ ] plotted graph of generated senses on right side of the ui
+    - similar to how rawaccel has a visualisation of your curve
 
-- [ ] installer embedded python
+- [ ] installer and (embedded python OR rewrite in a different language)
     - just so you don't have to manually install everything, should quicken the process dramatically
+    - rewriting in a different language would in theory speed it up, but computers are fast enough nowadays and this program is pretty lightweight so i don't think it's necessary
 
 ## installation
 
@@ -65,7 +66,7 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 2. install python (i'm using 3.11.7)
 
-3. install rawaccel
+3. install rawaccel and run it at least once so that `settings.json` is generated
 
 4. clone the repo into your rawaccel folder
 ```
@@ -77,8 +78,7 @@ the folder structure should look something like this:
 ```
 rawaccel/
     rawrand/
-        rawrand.py
-        wrapper.py
+        rawrand.pyw
         ...
     rawaccel.exe
     writer.exe
@@ -92,51 +92,9 @@ cd rawrand
 pip install -r requirements.txt
 ```
 
-6. run rawaccel at least once so that settings.json is generated and then copy it into the `rawrand` folder
+6. copy the `settings.json` file from the rawaccel folder into the `rawrand` folder
 
-7. run the randomiser from the `rawrand` folder with python
-
-
-```
-python rawrand.py <args>
-```
-
-for an overview on arguments you can use the `--help` argument
-
-```
-$ python rawrand.py --help
-usage: rawrand.py [-h] [--interp] --sens SENS --min MIN --max MAX [--num NUM] [--time TIME] [--mode {0,1,2,3}]
-
-uses rawaccel to randomise your sens
-
-options:
-  -h, --help            show this help message and exit
-  --interp, -i          enable interpolation to make sens changes less jarring
-  --sens SENS, -s SENS  your current in-game sens
-  --min MIN             the minimum sens you want the randomiser to set your sens to
-  --max MAX             the maximum sens you want the randomiser to set your sens to
-  --num NUM, -n NUM     the number of senses you want to be generated
-  --time TIME, -t TIME  how long (in seconds) each sens should be set for (min. 1.5)
-  --mode {0,1,2,3}, -m {0,1,2,3}
-                        changes the mode of sens generation [ 0: random (default), 1: truncated normal dist, 2: fixed mean random, 3: lognormal ]
-```
-
-this is my current config (as of 13th november 2024)
-
-```
-python rawrand.py --sens .45 --min .2 --max .97 --time 5 --mode 0 --num 500
-```
-
-once you find some settings that you like, just make a .bat file and run using the `wrapper.pyw` file instead of the actual `rawrand.py` file
-
-we use a wrapper so that your sens auto-resets after you close the program, regardless of whether you accidentally close the terminal window instead of
-
-e.g.
-
-```bat
-@echo off
-start /B "" "pythonw" "wrapper.pyw" --sens .45 --min .2 --max .97 --time 5 --mode 0 --num 500
-```
+7. run the randomiser from the bat file included, `rawrand.bat`
 
 ## updating
 
