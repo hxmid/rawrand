@@ -187,6 +187,7 @@ class rawrand:
         self.toggle_button.grid(row=0, column=2, pady=10, padx = (5, 0), sticky='ew')
 
         # init
+        self.average = 0
         self.sens = self.prev = self.prev2 = sens_t(1.0, 0.0)
         self.senses = None
         self.dt = -1
@@ -262,7 +263,7 @@ class rawrand:
                 color = "#ffb300",
                 zorder = 5
             )
-            self.ax.axhline(y = sens_t.scaled_sens(self.sens.sens), color = "grey", linestyle=':', linewidth=1)
+            self.ax.axhline(y = sens_t.scaled_sens(self.sens.sens), color = "#262626", linestyle=':', linewidth=1)
             self.ax.set_ylabel("sens")
 
         if self.senses and not self.running:
@@ -273,6 +274,7 @@ class rawrand:
                 color = "white",
                 label = "sens",
             )
+            self.ax.axhline(y = self.average, color = "#262626", linestyle=':', linewidth = 1)
             self.ax.set_ylabel("multiplier")
             self.ax.set_facecolor("black")
 
@@ -301,6 +303,7 @@ class rawrand:
             senses = interpolate_senses(senses)
 
         senses = [ round(sens, 5) for sens in senses ]
+        self.average = statistics.mean(senses)
         self.senses = deque([ sens_t(sens, self.update_interval) for sens in senses ])
 
 
