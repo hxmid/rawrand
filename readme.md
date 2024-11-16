@@ -17,8 +17,8 @@ random base sensitivity multipliers are generated and then written to the rawacc
 - your actual cursor sensitivity changes with the 'random' sensitivity. this makes your sensitivity in ui's very inconsistent, which might make it hard to due things such as by items or properly align smokes on some one like clove or brimstone in valorant.
     - there is no fix for this. this is just the caveat of how the randomiser works.
 
-- if you close the terminal window instead of pressing ctrl+c to exit the program it will **NOT** revert your sensitivity to normal
-    - i'm just going to add a wrapper program which runs in the background and handles all the resetting. pretty simple fix.
+- on launch, the program will auto-load the last config you used to generate random senses, **BUT** it will not fill out the fields for you
+    - it works, but all the fields are left blank, for some reason
 
 ## features
 
@@ -42,6 +42,8 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 - intuitive use
 
+- a graph showing upcoming senses
+
 ## planned features
 
 - [ ] key press triggered sensitivity switch
@@ -52,9 +54,6 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 - [ ] game state monitoring
     - possibly leveraging overwolf's api, monitor the game's gamestate to allow for sensitivity changes to happen at the end of each round
-
-- [ ] plotted graph of generated senses on right side of the ui
-    - similar to how rawaccel has a visualisation of your curve
 
 - [ ] installer and (embedded python OR rewrite in a different language)
     - just so you don't have to manually install everything, should quicken the process dramatically
