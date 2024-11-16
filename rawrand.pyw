@@ -220,8 +220,11 @@ class rawrand:
         self.graph_window.geometry("600x400")
 
         self.fig, self.ax = plt.subplots(facecolor = "black")
+        self.fig.subplots_adjust(left=0.1, right=1, top=0.95, bottom=0.05)
         self.ax.set_title("senses")
         self.ax.set_ylabel("sens")
+        self.ax.tick_params(axis='x', which='both', bottom=False, top=False)
+        self.ax.tick_params(axis='y', which='both', left=False, right=False)
 
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg(self.fig, master=self.graph_window)
         self.canvas_widget = self.canvas.get_tk_widget()
@@ -243,20 +246,23 @@ class rawrand:
             self.ax.set_ylim(math.floor(self.min * 10) / 10, math.ceil(self.max * 10) / 10)
             self.ax.set_xticks([])
             sensitivities = [sens_t.scaled_sens(self.prev2.sens), sens_t.scaled_sens(self.prev.sens), sens_t.scaled_sens(self.sens.sens)]
-            sensitivities.extend([sens_t.scaled_sens(sens.sens) for sens in list(itertools.islice(self.senses, 0, 3))])
+            sensitivities.extend([sens_t.scaled_sens(sens.sens) for sens in list(itertools.islice(self.senses, 0, 5))])
             self.ax.plot(
                 sensitivities,
                 marker = "o",
                 linestyle = "-",
-                color = "white",
+                color = "#dddddd",
+                markerfacecolor='white',
+                markeredgecolor='white',
                 label = "sens",
             )
-            self.ax.plot(
-                sens_t.scaled_sens(self.sens.sens), 2,
+            self.ax.scatter(
+                2, sens_t.scaled_sens(self.sens.sens),
                 marker = "o",
-                color = "yellow"
+                color = "#ffb300",
+                zorder = 5
             )
-            self.ax.axhline(y = sens_t.scaled_sens(self.sens.sens), color = "grey", linestyle = '--')
+            self.ax.axhline(y = sens_t.scaled_sens(self.sens.sens), color = "grey", linestyle=':', linewidth=1)
             self.ax.set_ylabel("sens")
 
         if self.senses and not self.running:
