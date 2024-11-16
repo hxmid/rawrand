@@ -94,11 +94,6 @@ pip install -r requirements.txt
 
 ## updating
 
-if you used git, just do the following
-
-```
-git fetch
-git pull
-```
+just run the `update.bat` file, it'll pull the latest version from the github repo and install any pip packages required
 
 make sure to read the readme file, there might be some other changes / new features
