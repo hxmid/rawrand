@@ -10,9 +10,6 @@ import json
 import subprocess
 from matplotlib import pyplot as plt
 import matplotlib
-import matplotlib.backends
-import matplotlib.backends.backend_agg
-import matplotlib.backends.backend_tkagg
 from scipy.interpolate import interp1d
 import statistics
 from typing import Dict, List
@@ -424,14 +421,14 @@ def on_exit():
 
 
 if __name__ == "__main__":
+    global DEFAULT_MULT
+
     plt.rcParams["text.color"] = "white"
     plt.rcParams["axes.labelcolor"] = "white"
     plt.rcParams["xtick.color"] = "white"
     plt.rcParams["ytick.color"] = "white"
     plt.rcParams["axes.titlecolor"] = "white"
     plt.rcParams["legend.edgecolor"] = "white"
-    plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
-    global DEFAULT_MULT
 
     try:
         with open("../settings.json", "r") as settings_json:

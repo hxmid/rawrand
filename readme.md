@@ -17,9 +17,6 @@ random base sensitivity multipliers are generated and then written to the rawacc
 - your actual cursor sensitivity changes with the 'random' sensitivity. this makes your sensitivity in ui's very inconsistent, which might make it hard to due things such as by items or properly align smokes on some one like clove or brimstone in valorant.
     - there is no fix for this. this is just the caveat of how the randomiser works.
 
-- on launch, the program will auto-load the last config you used to generate random senses, **BUT** it will not fill out the fields for you
-    - it works, but all the fields are left blank, for some reason
-
 ## features
 
 - different sensitivity randomisation methods:
