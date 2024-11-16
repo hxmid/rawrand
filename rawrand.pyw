@@ -381,6 +381,7 @@ class rawrand:
         self.running = not self.running
 
         if self.running:
+            self.dt = -1
             self.toggle_button.config(text = "stop")
             self.update_loop()
             self.apply_button.config(state=tk.DISABLED)
