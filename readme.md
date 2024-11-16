@@ -61,11 +61,11 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 ## installation
 
-1. install git for windows
+1. install [git for windows](https://git-scm.com/downloads/win)
 
-2. install python (i'm using 3.11.7)
+2. install python (i'm using [3.11.7](https://www.python.org/downloads/release/python-3117/))
 
-3. install rawaccel and run it at least once so that `settings.json` is generated
+3. install [rawaccel](https://github.com/a1xd/rawaccel) and run it at least once so that `settings.json` is generated
 
 4. clone the repo into your rawaccel folder
 ```
