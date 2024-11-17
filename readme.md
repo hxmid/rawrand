@@ -31,6 +31,9 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
     - 4. log normal
 
+    - 5. full range
+        - adds the entire min-max range, where num becomes the accuracy
+
 - sensitivity interpolation, smoothing out transitions between each sens
 
 - anticheat compliant (assuming the anticheat allows rawaccel)

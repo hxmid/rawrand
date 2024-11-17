@@ -136,7 +136,7 @@ class rawrand:
         self.max_entry.grid(row=2, column=1, padx=5, pady=2)
 
         # num senses
-        ttk.Label(input_frame, text = "count:").grid(row=3, column=0, padx=5, pady=2, sticky=tk.W)
+        ttk.Label(input_frame, text = "count / precision:").grid(row=3, column=0, padx=5, pady=2, sticky=tk.W)
         self.num_var = tk.StringVar(value=str(config.get("num", 500)))
         self.num_entry = ttk.Entry(input_frame, textvariable=self.num_var, width=15)
         self.num_entry.grid(row=3, column=1, padx=5, pady=2)
@@ -152,7 +152,7 @@ class rawrand:
         self.gen_mode = tk.StringVar(value=str(config.get("mode", "random")))
         self.gen_mode_combo = ttk.Combobox(input_frame,
                                       textvariable=self.gen_mode,
-                                      values=[ "random", "trunc. norm-dist", "fixed mean", "lognormal" ],
+                                      values=[ "random", "trunc. norm-dist", "fixed mean", "lognormal", "full range" ],
                                       width=12,
                                       state = "readonly")
         self.gen_mode_combo.grid(row=5, column=1, padx=5, pady=2)
@@ -160,7 +160,7 @@ class rawrand:
 
         self.shuffle_var = tk.BooleanVar(value=bool(config.get("shuffle", None)))
         self.shuffle_checkbox = ttk.Checkbutton(input_frame,
-                                      text = "reshuffle",
+                                      text = "shuffle",
                                       variable=self.shuffle_var)
         self.shuffle_checkbox.grid(row=6, column=0, pady=5, sticky=tk.W)
 
@@ -248,6 +248,7 @@ class rawrand:
             self.ax.set_xticks([])
             sensitivities = [sens_t.scaled_sens(self.prev2.sens), sens_t.scaled_sens(self.prev.sens), sens_t.scaled_sens(self.sens.sens)]
             sensitivities.extend([sens_t.scaled_sens(sens.sens) for sens in list(itertools.islice(self.senses, 0, 5))])
+
             self.ax.plot(
                 sensitivities,
                 marker = "o",
@@ -257,24 +258,29 @@ class rawrand:
                 markeredgecolor='white',
                 label = "sens",
             )
+
             self.ax.scatter(
                 2, sens_t.scaled_sens(self.sens.sens),
                 marker = "o",
                 color = "#ffb300",
                 zorder = 5
             )
+
             self.ax.axhline(y = sens_t.scaled_sens(self.sens.sens), color = "#262626", linestyle=':', linewidth=1)
             self.ax.set_ylabel("sens")
 
         if self.senses and not self.running:
             sensitivities = [sens.sens for sens in self.senses]
+
             self.ax.plot(
                 sensitivities,
                 linestyle = "-",
                 color = "white",
                 label = "sens",
             )
-            self.ax.axhline(y = self.average, color = "#262626", linestyle=':', linewidth = 1)
+
+            self.ax.axhline(y = sens_t.get_multi(self.base), color = "#262626", linestyle=':', linewidth = 2)
+            self.ax.axhline(y = self.average, color = "#ffb300", linestyle=':', linewidth = 2)
             self.ax.set_ylabel("multiplier")
             self.ax.set_facecolor("black")
 
@@ -295,6 +301,10 @@ class rawrand:
 
         elif gen_mode == "lognormal":
             senses = [ sens for sens in stats.lognorm(loc = .5, s = .5, scale = .5).rvs(self.num) if sens <= sens_t.get_multi(self.max) and sens_t.get_multi(self.min) <= sens ]
+
+        elif gen_mode == "full range":
+            increment = .1 ** self.num
+            senses = list(np.arange(sens_t.get_multi(self.min), sens_t.get_multi(self.max) + increment, increment))
 
         if self.shuffle_var.get() == True:
             random.shuffle(senses)
@@ -318,11 +328,14 @@ class rawrand:
             "shuffle": self.shuffle_var.get(),
             "interp": self.interpolation_var.get()
         }
+
         try:
             with open("config.json", "w") as f:
                 json.dump(d, f, indent=2)
+
         except:
             messagebox.showerror("error", "could not save config")
+            return
 
 
     def update_display(self):
@@ -342,38 +355,51 @@ class rawrand:
             self.base = float(self.base_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid base sens")
+            return
 
         try:
             self.min = float(self.min_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid min. sens")
+            return
 
         try:
             self.max = float(self.max_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid max. sens")
+            return
 
         try:
             self.num = int(self.num_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid generation num")
+            return
 
         try:
             self.update_interval = int(float(self.time_var.get()) * 1000)
         except ValueError:
             messagebox.showerror("error", "invalid time interval")
+            return
 
         if (self.base < self.min):
             messagebox.showerror("error", "current sens must be >= desired minimum sens")
+            return
 
         if (self.base > self.max):
             messagebox.showerror("error", "current sens must be <= desired maximum sens")
+            return
 
-        if (self.num < 5):
+        if (self.gen_mode.get() != "full range" and self.num < 5):
             messagebox.showerror("error", "sens count should be >= 5")
+            return
+
+        elif (self.gen_mode.get() == "full range" and (self.num > 3 or self.num < 0)):
+            messagebox.showerror("error", "keep your precision in the range [0, 3] when using \"full range\"")
+            return
 
         if (self.update_interval < 1.5):
             messagebox.showerror("error", "time must be >= 1.5 seconds")
+            return
 
         sens_t.BASE_SENS = self.base
         self.generate_senses()
@@ -392,13 +418,14 @@ class rawrand:
         if self.running:
             self.dt = -1
             self.toggle_button.config(text = "stop")
-            self.update_loop()
             self.apply_button.config(state=tk.DISABLED)
+            self.update_loop()
 
         else:
             self.toggle_button.config(text = "start")
             if self.after_id:
                 self.root.after_cancel(self.after_id)
+
             self.apply_button.config(state=tk.NORMAL)
             self.toggle_button.config(state=tk.DISABLED)
             self.root.after(RAWACCEL_DELAY, reset)
@@ -445,11 +472,14 @@ if __name__ == "__main__":
             DEFAULT_MULT = dict(json.load(settings_json))["profiles"][0]["Sensitivity multiplier"]
     except:
         messagebox.showerror("could not find rawaccel's settings.json in parent directory")
+        sys.exit(1)
+
     try:
         with open("./config.json", "r") as config:
             config = dict(json.load(config))
     except:
         config = { "base": .45, "min": .2, "max": .97, "num": 500, "time": 5000, "mode": "random", "shuffle": True, "interp": False }
+
     root : tk.Tk = tk.Tk()
     root.protocol("WM_DELETE_WINDOW", on_exit)
     app = rawrand(root, config)
