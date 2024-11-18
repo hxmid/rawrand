@@ -219,6 +219,7 @@ class rawrand:
         self.graph_window = tk.Toplevel(self.root)
         self.graph_window.title("senses")
         self.graph_window.geometry("600x400")
+        self.graph_window.iconbitmap("assets/dice.ico")
 
         self.fig, self.ax = plt.subplots(facecolor = "black")
         self.fig.subplots_adjust(left=0.1, right=1, top=0.95, bottom=0.05)
@@ -243,6 +244,7 @@ class rawrand:
 
         self.ax.set_facecolor("black")
 
+        # running
         if self.running:
             self.ax.set_ylim(math.floor(self.min * 10) / 10, math.ceil(self.max * 10) / 10)
             self.ax.set_xticks([])
@@ -253,7 +255,7 @@ class rawrand:
                 sensitivities,
                 marker = "o",
                 linestyle = "-",
-                color = "#dddddd",
+                color = "#cccccc",
                 markerfacecolor='white',
                 markeredgecolor='white',
                 label = "sens",
@@ -266,9 +268,11 @@ class rawrand:
                 zorder = 5
             )
 
-            self.ax.axhline(y = sens_t.scaled_sens(self.sens.sens), color = "#262626", linestyle=':', linewidth=1)
+            self.ax.axhline(y = sens_t.scaled_sens(self.sens.sens), color = "#ffb300", linestyle=':', linewidth=1)
+            self.ax.axhline(y = self.base, color = "#555555", linestyle=':', linewidth=1)
             self.ax.set_ylabel("sens")
 
+        # regeneration
         if self.senses and not self.running:
             sensitivities = [sens.sens for sens in self.senses]
 
@@ -279,7 +283,7 @@ class rawrand:
                 label = "sens",
             )
 
-            self.ax.axhline(y = sens_t.get_multi(self.base), color = "#262626", linestyle=':', linewidth = 2)
+            self.ax.axhline(y = sens_t.get_multi(self.base), color = "#555555", linestyle=':', linewidth = 2)
             self.ax.axhline(y = self.average, color = "#ffb300", linestyle=':', linewidth = 2)
             self.ax.set_ylabel("multiplier")
             self.ax.set_facecolor("black")
@@ -427,8 +431,8 @@ class rawrand:
                 self.root.after_cancel(self.after_id)
 
             self.apply_button.config(state=tk.NORMAL)
-            self.toggle_button.config(state=tk.DISABLED)
             self.root.after(RAWACCEL_DELAY, reset)
+            self.redraw_graph()
 
 
     def update_loop(self):

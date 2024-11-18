@@ -68,13 +68,13 @@ random base sensitivity multipliers are generated and then written to the rawacc
 3. install [rawaccel](https://github.com/a1xd/rawaccel) and run it at least once so that `settings.json` is generated
 
 4. clone the repo into your rawaccel folder
-```
+```sh
 git clone https://github.com/hxmid/rawrand.git
 ```
 
 the folder structure should look something like this:
 
-```
+```sh
 rawaccel/
     rawrand/
         rawrand.pyw
@@ -86,12 +86,16 @@ rawaccel/
 
 5. cd into the rawrand folder and install the pip packages
 
-```
+```sh
 cd rawrand
 pip install -r requirements.txt
 ```
 
 6. copy the `settings.json` file from the rawaccel folder into the `rawrand` folder
+
+```bat
+copy ..\settings.json .
+```
 
 7. run the randomiser from the bat file included, `rawrand.bat`
 
@@ -100,3 +104,10 @@ pip install -r requirements.txt
 just run the `update.bat` file, it'll pull the latest version from the github repo and install any pip packages required
 
 make sure to read the readme file, there might be some other changes / new features
+
+
+## reporting issues
+
+just make an issue here on the github page. if you can include any steps to reproduce that'd be great
+
+if you have a problem where your sens didn't reset after closing, just run `reset.bat`
