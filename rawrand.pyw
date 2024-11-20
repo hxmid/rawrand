@@ -119,19 +119,19 @@ class rawrand:
 
         # base sens
         ttk.Label(input_frame, text = "base:").grid(row=0, column=0, padx=5, pady=2, sticky=tk.W)
-        self.base_var = tk.StringVar(value=str(config.get("base", .45)))
+        self.base_var = tk.StringVar(value=str(config.get("base", 1)))
         self.base_entry = ttk.Entry(input_frame, textvariable=self.base_var, width=15)
         self.base_entry.grid(row=0, column=1, padx=5, pady=2)
 
         # min sens
         ttk.Label(input_frame, text = "min:").grid(row=1, column=0, padx=5, pady=2, sticky=tk.W)
-        self.min_var = tk.StringVar(value=str(config.get("min", .2)))
+        self.min_var = tk.StringVar(value=str(config.get("min", .5)))
         self.min_entry = ttk.Entry(input_frame, textvariable=self.min_var, width=15)
         self.min_entry.grid(row=1, column=1, padx=5, pady=2)
 
         # max sens
         ttk.Label(input_frame, text = "max:").grid(row=2, column=0, padx=5, pady=2, sticky=tk.W)
-        self.max_var = tk.StringVar(value=str(config.get("max", .97)))
+        self.max_var = tk.StringVar(value=str(config.get("max", 2)))
         self.max_entry = ttk.Entry(input_frame, textvariable=self.max_var, width=15)
         self.max_entry.grid(row=2, column=1, padx=5, pady=2)
 
@@ -143,7 +143,7 @@ class rawrand:
 
         # sens time
         ttk.Label(input_frame, text = "time (s):").grid(row=4, column=0, padx=5, pady=2, sticky=tk.W)
-        self.time_var = tk.StringVar(value=str(config.get("time", 5000)/1000))
+        self.time_var = tk.StringVar(value=str(config.get("time", 10000)/1000))
         self.time_entry = ttk.Entry(input_frame, textvariable=self.time_var, width=15)
         self.time_entry.grid(row=4, column=1, padx=5, pady=2)
 
@@ -158,13 +158,13 @@ class rawrand:
         self.gen_mode_combo.grid(row=5, column=1, padx=5, pady=2)
         self.gen_mode_combo.bind('<<ComboboxSelected>>', lambda e: self.update_display())
 
-        self.shuffle_var = tk.BooleanVar(value=bool(config.get("shuffle", None)))
+        self.shuffle_var = tk.BooleanVar(value=bool(config.get("shuffle", True)))
         self.shuffle_checkbox = ttk.Checkbutton(input_frame,
                                       text = "shuffle",
                                       variable=self.shuffle_var)
         self.shuffle_checkbox.grid(row=6, column=0, pady=5, sticky=tk.W)
 
-        self.interpolation_var = tk.BooleanVar(value=bool(config.get("interp", None)))
+        self.interpolation_var = tk.BooleanVar(value=bool(config.get("interp", False)))
         self.interp_checkbox = ttk.Checkbutton(input_frame,
                                       text = "interpolate",
                                       variable=self.interpolation_var)
@@ -455,7 +455,7 @@ class rawrand:
 
 def on_exit():
     if app.running:
-        sleep(float(RAWACCEL_DELAY)/1000.0)
+        sleep(float(RAWACCEL_DELAY) / 1000.0)
     reset()
     root.quit()
     sys.exit(0)
@@ -482,7 +482,7 @@ if __name__ == "__main__":
         with open("./config.json", "r") as config:
             config = dict(json.load(config))
     except:
-        config = { "base": .45, "min": .2, "max": .97, "num": 500, "time": 5000, "mode": "random", "shuffle": True, "interp": False }
+        config = { "base": 1, "min": .5, "max": 2, "num": 500, "time": 10000, "mode": "random", "shuffle": True, "interp": False }
 
     root : tk.Tk = tk.Tk()
     root.protocol("WM_DELETE_WINDOW", on_exit)

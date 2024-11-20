@@ -59,6 +59,9 @@ random base sensitivity multipliers are generated and then written to the rawacc
     - just so you don't have to manually install everything, should quicken the process dramatically
     - rewriting in a different language would in theory speed it up, but computers are fast enough nowadays and this program is pretty lightweight so i don't think it's necessary
 
+- [ ] built-in writer
+    - as of right now, the program just uses rawaccel's writer.exe to write the new senses to the driver, however having a built-in one would reduce dependencies and overhead (i think)
+
 ## installation
 
 1. install [git for windows](https://git-scm.com/downloads/win)
