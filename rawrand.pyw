@@ -401,8 +401,8 @@ class rawrand:
             messagebox.showerror("error", "keep your precision in the range [0, 3] when using \"full range\"")
             return
 
-        if (self.update_interval < 1.5):
-            messagebox.showerror("error", "time must be >= 1.5 seconds")
+        if (self.update_interval < RAWACCEL_DELAY):
+            messagebox.showerror("error", "time must be >= 1.1 seconds")
             return
 
         sens_t.BASE_SENS = self.base
