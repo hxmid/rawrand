@@ -16,6 +16,7 @@ from typing import Dict, List
 from scipy import stats
 import numpy as np
 import itertools
+import shutil
 
 class sens_t(object):
     BASE_SENS : float = 1.0
@@ -36,9 +37,14 @@ class sens_t(object):
 def set_sens(x : float) -> None:
     global rawaccel
 
-    with open("settings.json", "r") as settings_json:
-        settings = dict(json.load(settings_json))
-        settings["profiles"][0]["Sensitivity multiplier"] = x * DEFAULT_MULT
+    try:
+        with open("settings.json", "r") as settings_json:
+            settings = dict(json.load(settings_json))
+            settings["profiles"][0]["Sensitivity multiplier"] = x * DEFAULT_MULT
+    except:
+        shutil.copy("../settings.json", "./settings.json")
+        messagebox.showerror("error", "copied settings.json from parent folder.\nrestart the program")
+        sys.exit(1)
 
     with open("settings.json", "w") as settings_json:
         json.dump(settings, settings_json, indent=2)
@@ -475,7 +481,7 @@ if __name__ == "__main__":
         with open("../settings.json", "r") as settings_json:
             DEFAULT_MULT = dict(json.load(settings_json))["profiles"][0]["Sensitivity multiplier"]
     except:
-        messagebox.showerror("could not find rawaccel's settings.json in parent directory")
+        messagebox.showerror("error", "could not find rawaccel's settings.json in parent directory. make sure you've run it at least once to generate settings.json")
         sys.exit(1)
 
     try:
