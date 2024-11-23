@@ -14,8 +14,11 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 ## known issues
 
-- your actual cursor sensitivity changes with the 'random' sensitivity. this makes your sensitivity in ui's very inconsistent, which might make it hard to due things such as by items or properly align smokes on some one like clove or brimstone in valorant.
-    - there is no fix for this. this is just the caveat of how the randomiser works.
+- your actual cursor sensitivity changes with the 'random' sensitivity. this makes your sensitivity in ui's very inconsistent, which might make it a bit jarring to due things such as by items or properly align smokes on some one like clove or brimstone in valorant.
+    - there is no fix for this. this is just the caveat of how rawaccel works.
+
+- when using keybind and game state mode, there is a 1 second delay between event/keybind press and your sens changing, due to rawaccels built-in delay
+    - again, there is no fix for this
 
 ## features
 
@@ -41,6 +44,7 @@ random base sensitivity multipliers are generated and then written to the rawacc
 - anticheat compliant (assuming the anticheat allows rawaccel)
 
 - game agnostic, due to it only needing a base sens, and min/max sens range
+    - in theory this will work in any game that allows rawaccel to run, no need for sens converters or anything
 
 - intuitive use
 
