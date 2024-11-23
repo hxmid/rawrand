@@ -34,6 +34,8 @@ random base sensitivity multipliers are generated and then written to the rawacc
     - 5. full range
         - adds the entire min-max range, where num becomes the accuracy
 
+- time based and keybind triggers for sens change
+
 - sensitivity interpolation, smoothing out transitions between each sens
 
 - anticheat compliant (assuming the anticheat allows rawaccel)
@@ -46,8 +48,7 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 ## planned features
 
-- [ ] key press triggered sensitivity switch
-    - rather than having the sensitivities switch on time interval, have it mapped to a keybind. this will make it less jarring mid-round or mid-gunfight
+- [ ] mouse button support for keybinds
 
 - [ ] twitch integration
     - allow chatters to give a sens and it to automatically set your sens to that for x seconds

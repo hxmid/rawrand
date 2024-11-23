@@ -17,6 +17,7 @@ from scipy import stats
 import numpy as np
 import itertools
 import shutil
+from pynput import keyboard
 
 class sens_t(object):
     BASE_SENS : float = 1.0
@@ -112,7 +113,7 @@ class rawrand:
 
         # window size
         self.root.iconbitmap("assets/dice.ico")
-        self.root.geometry("485x300")
+        self.root.geometry("485x315")
         self.root.resizable(True, False)
 
         # main frame
@@ -147,50 +148,69 @@ class rawrand:
         self.num_entry = ttk.Entry(input_frame, textvariable=self.num_var, width=15)
         self.num_entry.grid(row=3, column=1, padx=5, pady=2)
 
-        # sens time
-        ttk.Label(input_frame, text = "time (s):").grid(row=4, column=0, padx=5, pady=2, sticky=tk.W)
+        # trigger mode
+        ttk.Label(input_frame, text = "trigger:").grid(row=4, column=0, padx=5, pady=2, sticky=tk.W)
+        self.trigger_mode_var = tk.StringVar(value=str(config.get("trigger", "time")))
+        self.trigger_mode_combo = ttk.Combobox(input_frame,
+                                      textvariable=self.trigger_mode_var,
+                                      values=[ "time", "keybind", "game state" ],
+                                      width=12,
+                                      state = "readonly")
+        self.trigger_mode_combo.grid(row=4, column=1, padx=5, pady=2)
+        self.trigger_mode_combo.bind('<<ComboboxSelected>>', lambda e: self.update_leftside())
+
+        # trigger sub-label
+        self.trigger_sublabel = ttk.Label(input_frame, text = "time (s):")
+        self.trigger_sublabel.grid(row=5, column=0, padx=5, pady=2, sticky=tk.W)
+
+        # keybind
+        self.keybind = tk.StringVar(value=str(config.get("keybind", "<null>")))
+        self.keybind_button = tk.Button(input_frame, text = self.keybind.get(), command=self.bind_key, width = 12, height = 1, padx = 0, pady=0)
+        self.keybind_button.grid(row=5, column=1, padx=5, pady=1)
+
+        # time
         self.time_var = tk.StringVar(value=str(config.get("time", 10000)/1000))
         self.time_entry = ttk.Entry(input_frame, textvariable=self.time_var, width=15)
-        self.time_entry.grid(row=4, column=1, padx=5, pady=2)
+        self.time_entry.grid(row=5, column=1, padx=5, pady=2)
 
         # generation mode
-        ttk.Label(input_frame, text = "gen. mode:").grid(row=5, column=0, padx=5, pady=2, sticky=tk.W)
-        self.gen_mode = tk.StringVar(value=str(config.get("mode", "random")))
+        ttk.Label(input_frame, text = "gen. mode:").grid(row=6, column=0, padx=5, pady=2, sticky=tk.W)
+        self.gen_mode_var = tk.StringVar(value=str(config.get("mode", "random")))
         self.gen_mode_combo = ttk.Combobox(input_frame,
-                                      textvariable=self.gen_mode,
+                                      textvariable=self.gen_mode_var,
                                       values=[ "random", "trunc. norm-dist", "fixed mean", "lognormal", "full range" ],
                                       width=12,
                                       state = "readonly")
-        self.gen_mode_combo.grid(row=5, column=1, padx=5, pady=2)
-        self.gen_mode_combo.bind('<<ComboboxSelected>>', lambda e: self.update_display())
+        self.gen_mode_combo.grid(row=6, column=1, padx=5, pady=2)
+        self.gen_mode_combo.bind('<<ComboboxSelected>>', lambda e: self.update_leftside())
 
         self.shuffle_var = tk.BooleanVar(value=bool(config.get("shuffle", True)))
         self.shuffle_checkbox = ttk.Checkbutton(input_frame,
                                       text = "shuffle",
                                       variable=self.shuffle_var)
-        self.shuffle_checkbox.grid(row=6, column=0, pady=5, sticky=tk.W)
+        self.shuffle_checkbox.grid(row=7, column=0, pady=5, sticky=tk.W)
 
         self.interpolation_var = tk.BooleanVar(value=bool(config.get("interp", False)))
         self.interp_checkbox = ttk.Checkbutton(input_frame,
                                       text = "interpolate",
                                       variable=self.interpolation_var)
-        self.interp_checkbox.grid(row=6, column=1, pady=5, sticky=tk.W)
+        self.interp_checkbox.grid(row=7, column=1, pady=5, sticky=tk.W)
 
         button_frame = ttk.Frame(input_frame)
-        button_frame.grid(row=7, columnspan=2, padx=10, pady=5, sticky = "ns")
+        button_frame.grid(row=8, columnspan=2, padx=5, pady=5, sticky = "ns")
 
         # graph button
         self.graph_button = ttk.Button(button_frame, text = "graph", command=self.show_graph)
-        self.graph_button.grid(row=0, column=0, pady=10, padx = (0, 5), sticky='ew')
+        self.graph_button.grid(row=0, column=0, pady=5, padx = (0, 5), sticky='ew')
 
         # apply button
         self.apply_button = ttk.Button(button_frame, text = "regenerate", command=self.apply_settings)
-        self.apply_button.grid(row=0, column=1, pady=10, padx = (5, 5), sticky='ew')
+        self.apply_button.grid(row=0, column=1, pady=5, padx = (5, 5), sticky='ew')
 
         # start/stop button
         self.running = False
         self.toggle_button = ttk.Button(button_frame, text = "start", command=self.toggle_rawrand, state=tk.DISABLED)
-        self.toggle_button.grid(row=0, column=2, pady=10, padx = (5, 0), sticky='ew')
+        self.toggle_button.grid(row=0, column=2, pady=5, padx = (5, 0), sticky='ew')
 
         # init
         self.average = 0
@@ -202,19 +222,40 @@ class rawrand:
         display_frame = ttk.Frame(main_frame)
         display_frame.grid(row=0, column=1, padx=10, pady=5, sticky = "ns")
 
-        self.prev_label = ttk.Label(display_frame, text = "", font=('Arial', 24), anchor = "center")
+        self.prev_label = ttk.Label(display_frame, text = "", font=('Consolas', 22), anchor = "center")
         self.prev_label.pack(expand=True, fill = "both", padx=10, pady=10)
 
-        self.label = ttk.Label(display_frame, text = "", font=('Arial', 36), anchor = "center")
+        self.label = ttk.Label(display_frame, text = "", font=('Consolas', 36), anchor = "center")
         self.label.pack(expand=True, fill = "both", padx=10, pady=10)
 
-        self.time_left = ttk.Label(display_frame, text = "", font=('Arial', 24), anchor = "center")
+        self.time_left = ttk.Label(display_frame, text = "", font=('Consolas', 22), anchor = "center")
         self.time_left.pack(expand=True, fill = "both", padx=10, pady=10)
 
-        self.update_interval = 1500
+        self.update_interval = int(float(self.time_var.get()) * 1000)
         self.after_id = None
 
         self.graph_window = None
+
+        self.bind_listener = None
+        self.graph_upd = None
+        self.trigger_mode = self.trigger_mode_var.get()
+
+        self.update_leftside()
+
+
+    def capture_key(self, key):
+        self.keybind.set( key.char if hasattr(key, 'char') else str(key)[4:] )
+        self.bind_listener.stop()
+        self.bind_listener = None
+        self.keybind_button.config(text = self.keybind.get())
+        self.update_leftside()
+
+
+    def bind_key(self):
+        self.keybind_button.config(text = "press key...")
+        if (not self.bind_listener):
+            self.bind_listener = keyboard.Listener(on_press=self.capture_key)
+            self.bind_listener.start()
 
 
     def show_graph(self):
@@ -298,21 +339,19 @@ class rawrand:
 
 
     def generate_senses(self):
-        gen_mode = self.gen_mode.get()
-
-        if gen_mode == "random":
+        if self.gen_mode == "random":
             senses = [ random.uniform( sens_t.get_multi(self.min), sens_t.get_multi(self.max) ) for _ in range(self.num) ]
 
-        elif gen_mode == "trunc. norm-dist":
+        elif self.gen_mode == "trunc. norm-dist":
             senses = stats.truncnorm( sens_t.get_multi(self.min) - 1, sens_t.get_multi(self.max) - 1, loc = 1, scale = 1 ).rvs(self.num)
 
-        elif gen_mode == "fixed mean":
+        elif self.gen_mode == "fixed mean":
             senses = fixed_mean_rand( 1, sens_t.get_multi(self.min), sens_t.get_multi(self.max), self.num )
 
-        elif gen_mode == "lognormal":
+        elif self.gen_mode == "lognormal":
             senses = [ sens for sens in stats.lognorm(loc = .5, s = .5, scale = .5).rvs(self.num) if sens <= sens_t.get_multi(self.max) and sens_t.get_multi(self.min) <= sens ]
 
-        elif gen_mode == "full range":
+        elif self.gen_mode == "full range":
             increment = .1 ** self.num
             senses = list(np.arange(sens_t.get_multi(self.min), sens_t.get_multi(self.max) + increment, increment))
 
@@ -324,7 +363,7 @@ class rawrand:
 
         senses = [ round(sens, 5) for sens in senses ]
         self.average = statistics.mean(senses)
-        self.senses = deque([ sens_t(sens, self.update_interval) for sens in senses ])
+        self.senses = deque([ sens_t(sens, self.update_interval if self.trigger_mode == "time" else RAWACCEL_DELAY / 1000) for sens in senses ])
 
 
     def save(self):
@@ -333,8 +372,10 @@ class rawrand:
             "min": self.min,
             "max": self.max,
             "num": self.num,
+            "trigger": self.trigger_mode,
             "time": self.update_interval,
-            "mode": self.gen_mode.get(),
+            "keybind": self.keybind.get(),
+            "mode": self.gen_mode,
             "shuffle": self.shuffle_var.get(),
             "interp": self.interpolation_var.get()
         }
@@ -348,68 +389,101 @@ class rawrand:
             return
 
 
+    def update_leftside(self):
+        if self.trigger_mode_var.get() == "time":
+            self.trigger_sublabel.config(text = "time (s):")
+            self.keybind_button.grid_forget()
+            self.time_entry.grid(row=5, column=1, padx=5, pady=2)
+
+        elif self.trigger_mode_var.get() == "keybind":
+            self.keybind_button.config(text = self.keybind.get())
+            self.trigger_sublabel.config(text = "key:")
+            self.time_entry.grid_forget()
+            self.keybind_button.grid(row=5, column=1, padx=5, pady=1)
+
+        elif self.trigger_mode_var.get() == "game state":
+            messagebox.showerror("error", "game state is not implemented yet.")
+            return
+
+
     def update_display(self):
-        if self.dt > RAWACCEL_DELAY:
+        if self.dt >= RAWACCEL_DELAY:
             self.label.config(text=f"{sens_t.scaled_sens(self.sens.sens):.3f}")
             self.prev_label.config(text=f"{sens_t.scaled_sens(self.prev.sens):.3f}")
-            self.time_left.config(text=f"{(self.sens.time - self.dt + RAWACCEL_DELAY)/1000:.1f}s")
+
+            if self.trigger_mode == "time":
+                self.time_left.config(text=f"{(self.sens.time - self.dt + RAWACCEL_DELAY - 100)/1000:.1f}s")
+            elif self.trigger_mode == "keybind":
+                grace = RAWACCEL_DELAY - self.dt - 100
+                if grace - 100 > 0:
+                    self.time_left.config(text=f"{grace/1000 :.1f}s")
+                else:
+                    self.time_left.config(text=f"<{self.keybind.get()}>")
 
         else:
             self.label.config(text=f"{sens_t.scaled_sens(self.prev.sens):.3f}")
             self.prev_label.config(text=f"{sens_t.scaled_sens(self.prev2.sens):.3f}")
-            self.time_left.config(text=f"{(RAWACCEL_DELAY - self.dt)/1000:.1f}s")
-
+            self.time_left.config(text=f"{(RAWACCEL_DELAY - self.dt - 100)/1000:.1f}s")
 
     def apply_settings(self):
         try:
             self.base = float(self.base_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid base sens")
-            return
+            return False
 
         try:
             self.min = float(self.min_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid min. sens")
-            return
+            return False
 
         try:
             self.max = float(self.max_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid max. sens")
-            return
+            return False
 
         try:
             self.num = int(self.num_var.get())
         except ValueError:
             messagebox.showerror("error", "invalid generation num")
-            return
+            return False
 
-        try:
-            self.update_interval = int(float(self.time_var.get()) * 1000)
-        except ValueError:
-            messagebox.showerror("error", "invalid time interval")
-            return
+        self.trigger_mode = self.trigger_mode_var.get()
+        self.gen_mode = self.gen_mode_var.get()
+
+        if (self.trigger_mode == "time"):
+            try:
+                self.update_interval = int(float(self.time_var.get()) * 1000)
+            except ValueError:
+                messagebox.showerror("error", "invalid time interval")
+                return False
+
+            if (self.update_interval < RAWACCEL_DELAY):
+                messagebox.showerror("error", "time must be >= 1.1 seconds")
+                return False
+
+        elif (self.trigger_mode == "keybind"):
+            if self.keybind.get() == "<null>":
+                messagebox.showerror("error", "bind a key to use keybind mode")
+                return False
 
         if (self.base < self.min):
             messagebox.showerror("error", "current sens must be >= desired minimum sens")
-            return
+            return False
 
         if (self.base > self.max):
             messagebox.showerror("error", "current sens must be <= desired maximum sens")
-            return
+            return False
 
-        if (self.gen_mode.get() != "full range" and self.num < 5):
+        if (self.gen_mode != "full range" and self.num < 5):
             messagebox.showerror("error", "sens count should be >= 5")
-            return
+            return False
 
-        elif (self.gen_mode.get() == "full range" and (self.num > 3 or self.num < 0)):
+        elif (self.gen_mode == "full range" and (self.num > 3 or self.num < 0)):
             messagebox.showerror("error", "keep your precision in the range [0, 3] when using \"full range\"")
-            return
-
-        if (self.update_interval < RAWACCEL_DELAY):
-            messagebox.showerror("error", "time must be >= 1.1 seconds")
-            return
+            return False
 
         sens_t.BASE_SENS = self.base
         self.generate_senses()
@@ -417,6 +491,7 @@ class rawrand:
         self.redraw_graph()
         self.toggle_button.config(state=tk.NORMAL)
         self.save()
+        return True
 
 
     def toggle_rawrand(self):
@@ -426,49 +501,90 @@ class rawrand:
         self.running = not self.running
 
         if self.running:
+            self.running = self.apply_settings()
+            if not self.running:
+                return
+
             self.dt = -1
             self.toggle_button.config(text = "stop")
             self.apply_button.config(state=tk.DISABLED)
+            self.keybind_button.config(state=tk.DISABLED)
             self.update_loop()
 
         else:
             self.toggle_button.config(text = "start")
+
+            if self.graph_upd:
+                self.root.after_cancel(self.graph_upd)
+                self.graph_upd = None
+
             if self.after_id:
                 self.root.after_cancel(self.after_id)
+                self.after_id = None
+
+            if self.bind_listener:
+                self.bind_listener.stop()
+                self.bind_listener = None
 
             self.apply_button.config(state=tk.NORMAL)
+            self.keybind_button.config(state=tk.NORMAL)
             self.root.after(RAWACCEL_DELAY, reset)
             self.redraw_graph()
 
 
+    def keybind_trigger(self, key):
+        if self.dt < RAWACCEL_DELAY:
+            return
+        key = key.char if hasattr(key, "char") else str(key)[4:]
+        if key == self.keybind.get():
+            self.update_sens()
+
+
+    def update_sens(self):
+        self.graph_upd = self.root.after(RAWACCEL_DELAY, self.redraw_graph)
+        self.dt = 0
+        self.prev2 = self.prev
+        self.prev = self.sens
+        self.sens = self.senses.popleft()
+        self.senses.append(self.sens)
+        set_sens(self.sens.sens)
+
+
     def update_loop(self):
         if self.running:
-            if self.dt == -1 or self.dt >= self.sens.time:
-                self.dt = 0
-                self.prev2 = self.prev
-                self.prev = self.sens
-                self.sens = self.senses.popleft()
-                self.senses.append(self.sens)
-                set_sens(self.sens.sens)
-
-            if self.dt == RAWACCEL_DELAY:
+            if self.dt == -1:
+                self.update_sens()
                 self.redraw_graph()
+
+                if (self.trigger_mode == "keybind"):
+                    self.bind_listener = keyboard.Listener(on_press=self.keybind_trigger)
+                    self.bind_listener.start()
+
+            if self.trigger_mode == "time":
+                if self.dt >= self.sens.time:
+                    self.update_sens()
 
             self.update_display()
             self.dt += 100
             self.after_id = self.root.after(100, self.update_loop)
 
 
-def on_exit():
-    if app.running:
-        sleep(float(RAWACCEL_DELAY) / 1000.0)
+def on_exit(code = 0):
+    if app.running and app.dt < RAWACCEL_DELAY:
+        sleep(float(RAWACCEL_DELAY - app.dt) / 1000.0)
     reset()
     root.quit()
-    sys.exit(0)
+    sys.exit(code)
 
 
 if __name__ == "__main__":
     global DEFAULT_MULT
+
+    log = "latest-dump.log"
+    with open(log, "w") as l:
+        l.write("")
+    sys.stdout = open(log, "a")
+    sys.stderr = open(log, "a")
 
     plt.rcParams["text.color"] = "white"
     plt.rcParams["axes.labelcolor"] = "white"
@@ -488,9 +604,16 @@ if __name__ == "__main__":
         with open("./config.json", "r") as config:
             config = dict(json.load(config))
     except:
-        config = { "base": 1, "min": .5, "max": 2, "num": 500, "time": 10000, "mode": "random", "shuffle": True, "interp": False }
+        config = { }
 
     root : tk.Tk = tk.Tk()
     root.protocol("WM_DELETE_WINDOW", on_exit)
-    app = rawrand(root, config)
-    root.mainloop()
+    try:
+        app = rawrand(root, config)
+        root.mainloop()
+    except KeyboardInterrupt:
+        on_exit()
+    except Exception as e:
+        print(e)
+        messagebox.showerror("error", f"{e}")
+        on_exit(1)
