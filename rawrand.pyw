@@ -1,4 +1,5 @@
 from collections import deque
+import enum
 import math
 import sys
 from time import sleep
@@ -17,7 +18,14 @@ from scipy import stats
 import numpy as np
 import itertools
 import shutil
-from pynput import keyboard
+from pynput import keyboard, mouse
+
+class trigger_devs(enum.Enum):
+    NONE = 0
+    KEYBOARD = 1
+    MOUSE = 2
+    SCROLL = 3
+
 
 class sens_t(object):
     BASE_SENS : float = 1.0
@@ -237,17 +245,71 @@ class rawrand:
         self.graph_window = None
 
         self.bind_listener = None
+        self.mouse_listener = None
         self.graph_upd = None
         self.trigger_mode = self.trigger_mode_var.get()
+        self.trigger_dev = trigger_devs.NONE
+
+        self.update_leftside()
+
+    def stop_listeners(self):
+        try:
+            self.mouse_listener.stop()
+            self.mouse_listener = None
+            self.bind_listener.stop()
+            self.bind_listener = None
+        except:
+            pass
+
+
+    def capture_scroll(self, x, y, dx, dy):
+        print("here")
+
+        if dy == 1:
+            key = "mwup"
+
+        elif dy == -1:
+            key = "mwdown"
+
+        elif dx == 1:
+            key = "mwright"
+
+        elif dx == -1:
+            key = "mwleft"
+
+        else:
+            return
+
+        self.stop_listeners()
+
+        self.keybind.set(key)
+        self.keybind_button.config(text = key)
 
         self.update_leftside()
 
 
-    def capture_key(self, key):
-        self.keybind.set( key.char if hasattr(key, 'char') else str(key)[4:] )
-        self.bind_listener.stop()
-        self.bind_listener = None
+    def capture_button(self, x, y, button, pressed):
+        if (not pressed):
+            return
+
+        self.stop_listeners()
+
+        key = str(button)[7:]
+        if key[0] == 'x':
+            key = "mouse" + str(int(key[-1]) + 3)
+
+        self.keybind.set(key)
+
         self.keybind_button.config(text = self.keybind.get())
+
+        self.update_leftside()
+
+    def capture_key(self, key):
+        self.stop_listeners()
+
+        self.keybind.set( key.char if hasattr(key, 'char') else str(key)[4:] )
+        self.keybind_button.config(text = self.keybind.get())
+
         self.update_leftside()
 
 
@@ -256,6 +318,10 @@ class rawrand:
         if (not self.bind_listener):
             self.bind_listener = keyboard.Listener(on_press=self.capture_key)
             self.bind_listener.start()
+
+        if (not self.mouse_listener):
+            self.mouse_listener = mouse.Listener(on_click=self.capture_button, on_scroll=self.capture_scroll)
+            self.mouse_listener.start()
 
 
     def show_graph(self):
@@ -509,6 +575,17 @@ class rawrand:
             self.toggle_button.config(text = "stop")
             self.apply_button.config(state=tk.DISABLED)
             self.keybind_button.config(state=tk.DISABLED)
+
+            if (self.trigger_mode == "keybind"):
+                if (self.keybind.get() in [ "left", "right", "middle", "mouse4", "mouse5"]):
+                    self.trigger_dev = trigger_devs.MOUSE
+
+                elif (self.keybind.get() in [ "mwdown", "mwup", "mwleft", "mwright"]):
+                    self.trigger_dev = trigger_devs.SCROLL
+
+                else:
+                    self.trigger_dev = trigger_devs.KEYBOARD
+
             self.update_loop()
 
         else:
@@ -526,16 +603,47 @@ class rawrand:
                 self.bind_listener.stop()
                 self.bind_listener = None
 
+            if self.mouse_listener:
+                self.mouse_listener.stop()
+                self.mouse_listener = None
+
+            self.trigger_dev = trigger_devs.NONE
+
             self.apply_button.config(state=tk.NORMAL)
             self.keybind_button.config(state=tk.NORMAL)
             self.root.after(RAWACCEL_DELAY, reset)
             self.redraw_graph()
 
 
-    def keybind_trigger(self, key):
+    def keybind_trigger(self, a, b = 0, c = 0, d = 0):
         if self.dt < RAWACCEL_DELAY:
             return
-        key = key.char if hasattr(key, "char") else str(key)[4:]
+
+        if (self.trigger_dev == trigger_devs.KEYBOARD):
+            key = a.char if hasattr(a, "char") else str(a)[4:]
+
+        elif (self.trigger_dev == trigger_devs.MOUSE):
+            if (not d):
+                return
+
+            key = str(c)[7:]
+
+            if key[0] == 'x':
+                key = "mouse" + str(int(key[-1]) + 3)
+
+        elif (self.trigger_dev == trigger_devs.SCROLL):
+            if d == 1:
+                key = "mwup"
+
+            elif d == -1:
+                key = "mwdown"
+
+            elif c == 1:
+                key = "mwright"
+
+            elif c == -1:
+                key = "mwleft"
+
         if key == self.keybind.get():
             self.update_sens()
 
@@ -557,8 +665,17 @@ class rawrand:
                 self.redraw_graph()
 
                 if (self.trigger_mode == "keybind"):
-                    self.bind_listener = keyboard.Listener(on_press=self.keybind_trigger)
-                    self.bind_listener.start()
+                    if (self.trigger_dev == trigger_devs.KEYBOARD):
+                        self.bind_listener = keyboard.Listener(on_press=self.keybind_trigger)
+                        self.bind_listener.start()
+
+                    elif (self.trigger_dev == trigger_devs.MOUSE):
+                        self.mouse_listener = mouse.Listener(on_click=self.keybind_trigger)
+                        self.mouse_listener.start()
+
+                    elif (self.trigger_dev == trigger_devs.SCROLL):
+                        self.mouse_listener = mouse.Listener(on_scroll=self.keybind_trigger)
+                        self.mouse_listener.start()
 
             if self.trigger_mode == "time":
                 if self.dt >= self.sens.time:
@@ -608,11 +725,14 @@ if __name__ == "__main__":
 
     root : tk.Tk = tk.Tk()
     root.protocol("WM_DELETE_WINDOW", on_exit)
+
     try:
         app = rawrand(root, config)
         root.mainloop()
+
     except KeyboardInterrupt:
         on_exit()
+
     except Exception as e:
         print(e)
         messagebox.showerror("error", f"{e}")
