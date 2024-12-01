@@ -37,7 +37,7 @@ random base sensitivity multipliers are generated and then written to the rawacc
     - 5. full range
         - adds the entire min-max range, where num becomes the accuracy
 
-- time based and keybind triggers for sens change
+- time based and keybind triggers (key, mouse button or scrollwheel) for sens change
 
 - sensitivity interpolation, smoothing out transitions between each sens
 
@@ -51,8 +51,6 @@ random base sensitivity multipliers are generated and then written to the rawacc
 - a graph showing upcoming senses
 
 ## planned features
-
-- [ ] mouse button support for keybinds
 
 - [ ] twitch integration
     - allow chatters to give a sens and it to automatically set your sens to that for x seconds
