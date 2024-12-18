@@ -1,5 +1,6 @@
 # rawrand
 
+
 ## overview
 
 a sensitivity randomiser piggy-backing off of rawaccel's mouse driver
@@ -8,11 +9,13 @@ a sensitivity randomiser piggy-backing off of rawaccel's mouse driver
 
 this was primarily developed for valorant, however due to the nature of it piggy-backing off of rawaccel, it will work in any game that also allows rawaccel (overwatch, cs, etc.)
 
+
 ## how it works
 
 random base sensitivity multipliers are generated and then written to the rawaccel mouse driver using rawaccel's 'writer.exe'
 
-## known issues
+
+## caveats
 
 - your actual cursor sensitivity changes with the 'random' sensitivity. this makes your sensitivity in ui's very inconsistent, which might make it a bit jarring to due things such as by items or properly align smokes on some one like clove or brimstone in valorant.
     - there is no fix for this. this is just the caveat of how rawaccel works.
@@ -20,7 +23,16 @@ random base sensitivity multipliers are generated and then written to the rawacc
 - when using keybind and game state mode, there is a 1 second delay between event/keybind press and your sens changing, due to rawaccels built-in delay
     - again, there is no fix for this
 
+
+## known issues
+
+none at this time :)
+
+
 ## features
+
+- realtime twitch chat integration
+    - allows for your chat to control your sens for you (still keeping it within your predefined range to avoid abuse)
 
 - different sensitivity randomisation methods:
 
@@ -50,10 +62,8 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 - a graph showing upcoming senses
 
-## planned features
 
-- [ ] twitch integration
-    - allow chatters to give a sens and it to automatically set your sens to that for x seconds
+## planned features
 
 - [ ] game state monitoring
     - possibly leveraging overwolf's api, monitor the game's gamestate to allow for sensitivity changes to happen at the end of each round
@@ -64,6 +74,7 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 - [ ] built-in writer
     - as of right now, the program just uses rawaccel's writer.exe to write the new senses to the driver, however having a built-in one would reduce dependencies and overhead (i think)
+
 
 ## installation
 
@@ -107,6 +118,37 @@ copy ..\settings.json .
 ```
 
 7. run the randomiser from the bat file included, `rawrand.bat`
+
+
+## twitch integration
+
+1. for twitch integration, click the twitch button in the main menu
+
+2. specify your twitch channel, then go to [this website](https://twitchtokengenerator.com/)
+
+3. enable the `chat:read` scope (it's the only scope we need)
+
+4. generate the token and copy the whole thing into the oauth field, including the `oauth:` part
+
+5. regenerate and start
+
+
+### format
+
+right now, the only thing chatters can do is add a sens to the pool, with the following format
+
+```
+.sens <sens>
+```
+
+e.g.
+
+```
+.sens .5
+```
+
+note that a chatted sens will be ignored if it is outside of your sens range
+
 
 ## updating
 

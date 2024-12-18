@@ -1,6 +1,8 @@
+import asyncio
 from collections import deque
 import enum
 import math
+import os
 import sys
 from time import sleep
 import tkinter as tk
@@ -13,18 +15,44 @@ from matplotlib import pyplot as plt
 import matplotlib
 from scipy.interpolate import interp1d
 import statistics
-from typing import Dict, List
+from typing import Dict, List, Union
 from scipy import stats
 import numpy as np
 import itertools
 import shutil
 from pynput import keyboard, mouse
+from twitchio.ext import commands
+import threading
+from PIL import Image, ImageTk
+import datetime
+from cryptography.fernet import Fernet
+from twitchio.errors import *
+
+SENSES = None
+RAWACCEL_DELAY = 1100
+reset = lambda : subprocess.Popen("reset.bat", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+sens_lock = threading.Lock()
 
 class trigger_devs(enum.Enum):
     NONE = 0
     KEYBOARD = 1
     MOUSE = 2
     SCROLL = 3
+
+
+def log_dump(s : str):
+    s = "".join([f"[{datetime.datetime.now().strftime('%H:%M:%S')}] -> ", s])
+    print(s)
+    with open("latest-dump.log", "a") as f:
+        print(s, file=f)
+
+
+def on_exit(code = 0):
+    if app.running and app.dt < RAWACCEL_DELAY:
+        sleep(float(RAWACCEL_DELAY - app.dt) / 1000.0)
+    reset()
+    root.quit()
+    sys.exit(code)
 
 
 class sens_t(object):
@@ -35,12 +63,16 @@ class sens_t(object):
         return sens / sens_t.BASE_SENS
 
     @staticmethod
-    def scaled_sens(sens) -> float:
-        return sens * sens_t.BASE_SENS
+    def scaled_sens(multi) -> float:
+        return multi * sens_t.BASE_SENS
 
-    def __init__(self, sens : float, time : float):
+    def __init__(self, sens : float, time : float, author : Union[str, None] = None):
         self.sens : float = sens
         self.time : float = time
+        self.author : str = author
+
+    def __str__(self) -> str:
+        return f"<sens_t>(sens: {self.sens}, time: {self.time}, author: {self.author})"
 
 
 def set_sens(x : float) -> None:
@@ -50,6 +82,7 @@ def set_sens(x : float) -> None:
         with open("settings.json", "r") as settings_json:
             settings = dict(json.load(settings_json))
             settings["profiles"][0]["Sensitivity multiplier"] = x * DEFAULT_MULT
+
     except:
         shutil.copy("../settings.json", "./settings.json")
         messagebox.showerror("error", "copied settings.json from parent folder.\nrestart the program")
@@ -74,10 +107,8 @@ def fixed_mean_rand(bias : float, minimum : float, maximum : float, count : int)
 
             if (abs(bias - mean) <= 1e-6):
                 new = random.uniform(minimum, maximum)
-
             elif (mean < bias):
                 new = random.uniform(bias, maximum)
-
             elif (mean > bias):
                 new = random.uniform(minimum, bias)
 
@@ -107,22 +138,97 @@ def interpolate_senses(senses : List[float]) -> List[float]:
     return senses
 
 
-RAWACCEL_DELAY = 1100
+class twitch_listener(commands.Bot):
+
+    def __init__(self, token, channel, sens_min, sens_max, sens_time):
+        self.token = token
+        self.channel = channel
+        self.min = sens_min
+        self.max = sens_max
+        self.max = sens_max
+        self.time = sens_time
+        super().__init__(token=self.token, prefix="", initial_channels=[self.channel])
+
+    async def start(self):
+        try:
+            await super().start()
+        except AuthenticationError:
+            messagebox.showerror("error", "invalid twitch oauth key")
+            app.force_stop()
+
+    async def event_ready(self):
+        log_dump(f"connected to twitch channel <{self.channel}>")
+
+    async def event_message(self, message):
+        if message.content[:4] == "sens":
+            try:
+                args : str = message.content[4:].split(" ")[1]
+                sens = float(args)
+
+                if self.min > sens:
+                    return
+                if self.max < sens:
+                    return
+
+                s = sens_t(sens_t.get_multi(sens), self.time, message.author.display_name)
+                with sens_lock:
+                    for i in range(len(SENSES)):
+                        if SENSES[i].author is None:
+                            log_dump(f"added {s} at index {i}")
+                            SENSES.insert(i, s)
+                            return
+            except:
+                return
 
 
-def reset():
-    subprocess.Popen("reset.bat", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+class key_t(object):
+    def __init__(self, key_file=".key"):
+        self.key_file = key_file
+        self.key = self.load_or_generate_key()
+
+    def load_or_generate_key(self):
+        # Check if the key file exists; if not, generate a new key
+        if not os.path.exists(self.key_file):
+            key = Fernet.generate_key()
+            with open(self.key_file, "wb") as f:
+                f.write(key)
+            return key
+        else:
+            # Load the existing key from the file
+            with open(self.key_file, "rb") as f:
+                return f.read()
+
+    def encrypt_password(self, password):
+        fernet = Fernet(self.key)
+        return fernet.encrypt(password.encode())
+
+    def decrypt_password(self, encrypted_password):
+        fernet = Fernet(self.key)
+        return fernet.decrypt(encrypted_password).decode()
+
+    def save_password(self, password, file_name):
+        encrypted_password = self.encrypt_password(password)
+        with open(file_name, "wb") as f:
+            f.write(encrypted_password)
+
+    def load_password(self, file_name):
+        if not os.path.exists(file_name):
+            return None
+        with open(file_name, "rb") as f:
+            encrypted_password = f.read()
+        return self.decrypt_password(encrypted_password)
 
 
 class rawrand:
-    def __init__(self, root : tk.Tk, config: Dict):
+
+    def __init__(self, root : tk.Tk, config: Dict, twitch_oauth : Union[None, str]):
         self.root = root
-        self.root.title("rawrand")
+        self.root.title("rawrand by hamid")
 
         # window size
         self.root.iconbitmap("assets/dice.ico")
-        self.root.geometry("485x315")
-        self.root.resizable(True, False)
+        self.root.geometry("515x315")
+        self.root.resizable(False, False)
 
         # main frame
         main_frame = ttk.Frame(root, padding = "10")
@@ -177,6 +283,7 @@ class rawrand:
         self.keybind_button.grid(row=5, column=1, padx=5, pady=1)
 
         # time
+        # TODO(hamid): add random time intervals
         self.time_var = tk.StringVar(value=str(config.get("time", 10000)/1000))
         self.time_entry = ttk.Entry(input_frame, textvariable=self.time_var, width=15)
         self.time_entry.grid(row=5, column=1, padx=5, pady=2)
@@ -207,24 +314,23 @@ class rawrand:
         button_frame = ttk.Frame(input_frame)
         button_frame.grid(row=8, columnspan=2, padx=5, pady=5, sticky = "ns")
 
+        # twitch button
+        self.twitch_icon = ImageTk.PhotoImage(Image.open("assets/twitch.ico").resize((20, 20), Image.Resampling.LANCZOS))
+        self.twitch_button = tk.Button(button_frame, image=self.twitch_icon, command=self.twitch_menu, padx = 0, pady=0)
+        self.twitch_button.grid(row=0, column=0, pady=5, padx = (0, 5), sticky='ew')
+
         # graph button
         self.graph_button = ttk.Button(button_frame, text = "graph", command=self.show_graph)
-        self.graph_button.grid(row=0, column=0, pady=5, padx = (0, 5), sticky='ew')
+        self.graph_button.grid(row=0, column=1, pady=5, padx = (0, 5), sticky='ew')
 
         # apply button
         self.apply_button = ttk.Button(button_frame, text = "regenerate", command=self.apply_settings)
-        self.apply_button.grid(row=0, column=1, pady=5, padx = (5, 5), sticky='ew')
+        self.apply_button.grid(row=0, column=2, pady=5, padx = (5, 5), sticky='ew')
 
         # start/stop button
         self.running = False
         self.toggle_button = ttk.Button(button_frame, text = "start", command=self.toggle_rawrand, state=tk.DISABLED)
-        self.toggle_button.grid(row=0, column=2, pady=5, padx = (5, 0), sticky='ew')
-
-        # init
-        self.average = 0
-        self.sens = self.prev = self.prev2 = sens_t(1.0, 0.0)
-        self.senses = None
-        self.dt = -1
+        self.toggle_button.grid(row=0, column=3, pady=5, padx = (5, 0), sticky='ew')
 
         # display
         display_frame = ttk.Frame(main_frame)
@@ -240,17 +346,75 @@ class rawrand:
         self.time_left.pack(expand=True, fill = "both", padx=10, pady=10)
 
         self.update_interval = int(float(self.time_var.get()) * 1000)
-        self.after_id = None
 
-        self.graph_window = None
-
-        self.bind_listener = None
-        self.mouse_listener = None
-        self.graph_upd = None
+        # init
+        self.dt = -1
+        self.average = 0
+        self.sens = self.prev = self.prev2 = sens_t(1.0, 0.0)
         self.trigger_mode = self.trigger_mode_var.get()
         self.trigger_dev = trigger_devs.NONE
+        self.mouse_listener = None
+        self.twitch_window = None
+        self.bind_listener = None
+        self.graph_window = None
+        self.graph_upd = None
+        self.after_id = None
+
+        # twitch integration
+        self.twitch_enabled = tk.BooleanVar(value=bool(config.get("twitch", {}).get("enabled", False)))
+        self.twitch_channel_var = tk.StringVar(value=str(config.get("twitch", {}).get("channel", "")))
+        self.twitch_oauth_var = tk.StringVar(value=str("" if twitch_oauth is None else twitch_oauth))
+        self.twitch_listener = None
+        self.twitch_loop = None
+        self.twitch_thread = None
 
         self.update_leftside()
+
+
+    def update_twitch_menu(self):
+        if self.twitch_enabled.get():
+            self.twitch_channel_entry.config(state=tk.NORMAL)
+            self.twitch_oauth_entry.config(state=tk.NORMAL)
+
+        else:
+            self.twitch_channel_entry.config(state=tk.DISABLED)
+            self.twitch_oauth_entry.config(state=tk.DISABLED)
+
+
+    def twitch_menu(self):
+        if self.twitch_window and self.twitch_window.winfo_exists():
+            return
+
+        self.twitch_window = tk.Toplevel(self.root)
+        self.twitch_window.title("chat")
+        self.twitch_window.geometry("215x215")
+        self.twitch_window.iconbitmap("assets/pinkdice.ico")
+
+        twitch_frame = ttk.LabelFrame(self.twitch_window, text="twitch integration", padding = "10")
+        twitch_frame.grid(row=0, column=0, padx=10, pady=5, sticky=tk.N)
+
+        self.shuffle_checkbox = ttk.Checkbutton(twitch_frame, text = "enabled", variable=self.twitch_enabled, command=self.update_twitch_menu)
+        self.shuffle_checkbox.grid(row=0, column=0, pady=0, sticky=tk.W)
+
+        ttk.Label(twitch_frame, text = "channel:").grid(row=1, column=0, padx=5, pady=2, sticky=tk.W)
+        self.twitch_channel_entry = ttk.Entry(twitch_frame, textvariable=self.twitch_channel_var, width=15)
+        self.twitch_channel_entry.grid(row=1, column=1, padx=5, pady=2)
+
+        ttk.Label(twitch_frame, text = "oauth:").grid(row=2, column=0, padx=5, pady=2, sticky=tk.W)
+        self.twitch_oauth_entry = ttk.Entry(twitch_frame, textvariable=self.twitch_oauth_var, width=15, show="•")
+        self.twitch_oauth_entry.grid(row=2, column=1, padx=5, pady=2)
+
+        # format frame
+        twitch_format_frame = ttk.Frame(self.twitch_window, padding = "10")
+        twitch_format_frame.grid(row=1, column=0, padx=10, pady=5, sticky=tk.N)
+
+        ttk.Label(twitch_format_frame, text = "format:").grid(row=10, column=0, padx=5, pady=2, sticky=tk.W)
+        ttk.Label(twitch_format_frame, text = ".sens <sens>").grid(row=10, column=1, padx=5, pady=2, sticky=tk.W)
+        ttk.Label(twitch_format_frame, text = "example:").grid(row=11, column=0, padx=5, pady=2, sticky=tk.W)
+        ttk.Label(twitch_format_frame, text = ".sens 0.5").grid(row=11, column=1, padx=5, pady=2, sticky=tk.W)
+
+        self.update_twitch_menu()
+
 
     def stop_listeners(self):
         try:
@@ -263,20 +427,14 @@ class rawrand:
 
 
     def capture_scroll(self, x, y, dx, dy):
-        print("here")
-
         if dy == 1:
             key = "mwup"
-
         elif dy == -1:
             key = "mwdown"
-
         elif dx == 1:
             key = "mwright"
-
         elif dx == -1:
             key = "mwleft"
-
         else:
             return
 
@@ -299,10 +457,10 @@ class rawrand:
             key = "mouse" + str(int(key[-1]) + 3)
 
         self.keybind.set(key)
-
         self.keybind_button.config(text = self.keybind.get())
 
         self.update_leftside()
+
 
     def capture_key(self, key):
         self.stop_listeners()
@@ -315,6 +473,7 @@ class rawrand:
 
     def bind_key(self):
         self.keybind_button.config(text = "press key...")
+
         if (not self.bind_listener):
             self.bind_listener = keyboard.Listener(on_press=self.capture_key)
             self.bind_listener.start()
@@ -359,10 +518,10 @@ class rawrand:
 
         # running
         if self.running:
-            self.ax.set_ylim(math.floor(self.min * 10) / 10, math.ceil(self.max * 10) / 10)
+            self.ax.set_ylim( math.floor(self.min * 10) / 10, math.ceil(self.max * 10) / 10 )
             self.ax.set_xticks([])
-            sensitivities = [sens_t.scaled_sens(self.prev2.sens), sens_t.scaled_sens(self.prev.sens), sens_t.scaled_sens(self.sens.sens)]
-            sensitivities.extend([sens_t.scaled_sens(sens.sens) for sens in list(itertools.islice(self.senses, 0, 5))])
+            sensitivities = [ sens_t.scaled_sens(self.prev2.sens), sens_t.scaled_sens(self.prev.sens), sens_t.scaled_sens(self.sens.sens) ]
+            sensitivities.extend([ sens_t.scaled_sens(sens.sens) for sens in list(itertools.islice(SENSES, 0, 5)) ])
 
             self.ax.plot(
                 sensitivities,
@@ -386,8 +545,8 @@ class rawrand:
             self.ax.set_ylabel("sens")
 
         # regeneration
-        if self.senses and not self.running:
-            sensitivities = [sens.sens for sens in self.senses]
+        if SENSES and not self.running:
+            sensitivities = [sens.sens for sens in SENSES]
 
             self.ax.plot(
                 sensitivities,
@@ -405,6 +564,7 @@ class rawrand:
 
 
     def generate_senses(self):
+        global SENSES
         if self.gen_mode == "random":
             senses = [ random.uniform( sens_t.get_multi(self.min), sens_t.get_multi(self.max) ) for _ in range(self.num) ]
 
@@ -429,7 +589,12 @@ class rawrand:
 
         senses = [ round(sens, 5) for sens in senses ]
         self.average = statistics.mean(senses)
-        self.senses = deque([ sens_t(sens, self.update_interval if self.trigger_mode == "time" else RAWACCEL_DELAY / 1000) for sens in senses ])
+        SENSES = deque([ sens_t(sens, self.update_interval if self.trigger_mode == "time" else RAWACCEL_DELAY / 1000) for sens in senses ])
+
+
+    def force_stop(self):
+        self.running = True
+        self.toggle_rawrand()
 
 
     def save(self):
@@ -443,16 +608,21 @@ class rawrand:
             "keybind": self.keybind.get(),
             "mode": self.gen_mode,
             "shuffle": self.shuffle_var.get(),
-            "interp": self.interpolation_var.get()
+            "interp": self.interpolation_var.get(),
+            "twitch": {
+                "enabled": self.twitch_enabled.get(),
+                "channel": self.twitch_channel_var.get()
+            }
         }
 
         try:
             with open("config.json", "w") as f:
                 json.dump(d, f, indent=2)
-
         except:
             messagebox.showerror("error", "could not save config")
-            return
+
+        key = key_t()
+        key.save_password(self.twitch_oauth_var.get(), "./.twitch_oauth")
 
 
     def update_leftside(self):
@@ -469,7 +639,6 @@ class rawrand:
 
         elif self.trigger_mode_var.get() == "game state":
             messagebox.showerror("error", "game state is not implemented yet.")
-            return
 
 
     def update_display(self):
@@ -479,8 +648,10 @@ class rawrand:
 
             if self.trigger_mode == "time":
                 self.time_left.config(text=f"{(self.sens.time - self.dt + RAWACCEL_DELAY - 100)/1000:.1f}s")
+
             elif self.trigger_mode == "keybind":
                 grace = RAWACCEL_DELAY - self.dt - 100
+
                 if grace - 100 > 0:
                     self.time_left.config(text=f"{grace/1000 :.1f}s")
                 else:
@@ -490,6 +661,7 @@ class rawrand:
             self.label.config(text=f"{sens_t.scaled_sens(self.prev.sens):.3f}")
             self.prev_label.config(text=f"{sens_t.scaled_sens(self.prev2.sens):.3f}")
             self.time_left.config(text=f"{(RAWACCEL_DELAY - self.dt - 100)/1000:.1f}s")
+
 
     def apply_settings(self):
         try:
@@ -560,8 +732,15 @@ class rawrand:
         return True
 
 
+    def run_twitch_listener(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        self.twitch_loop = asyncio.get_event_loop()
+        self.twitch_listener = twitch_listener(self.twitch_oauth_var.get(), self.twitch_channel_var.get(), self.min, self.max, self.update_interval)
+        self.twitch_loop.run_until_complete(self.twitch_listener.start())
+
+
     def toggle_rawrand(self):
-        if self.senses == None:
+        if SENSES == None:
             self.apply_settings()
 
         self.running = not self.running
@@ -571,10 +750,20 @@ class rawrand:
             if not self.running:
                 return
 
+            if self.twitch_window:
+                self.twitch_window.destroy()
+                self.twitch_window = None
+
             self.dt = -1
             self.toggle_button.config(text = "stop")
             self.apply_button.config(state=tk.DISABLED)
             self.keybind_button.config(state=tk.DISABLED)
+            self.twitch_button.config(state=tk.DISABLED)
+
+            if (self.twitch_enabled.get()):
+                self.twitch_thread = threading.Thread(target=self.run_twitch_listener, daemon = True)
+                self.twitch_thread.start()
+
 
             if (self.trigger_mode == "keybind"):
                 if (self.keybind.get() in [ "left", "right", "middle", "mouse4", "mouse5"]):
@@ -588,8 +777,7 @@ class rawrand:
 
             self.update_loop()
 
-        else:
-            self.toggle_button.config(text = "start")
+        elif not self.running:
 
             if self.graph_upd:
                 self.root.after_cancel(self.graph_upd)
@@ -607,15 +795,27 @@ class rawrand:
                 self.mouse_listener.stop()
                 self.mouse_listener = None
 
-            self.trigger_dev = trigger_devs.NONE
+            if self.twitch_loop:
+                self.twitch_loop.call_soon(lambda: asyncio.create_task(self.twitch_listener.close()))
+                self.twitch_loop = None
 
+            if self.twitch_thread:
+                self.twitch_thread = None
+
+            self.trigger_dev = trigger_devs.NONE
+            self.toggle_button.config(text = "start")
             self.apply_button.config(state=tk.NORMAL)
             self.keybind_button.config(state=tk.NORMAL)
-            self.root.after(RAWACCEL_DELAY, reset)
+            self.twitch_button.config(state=tk.NORMAL)
+
+            if self.dt < RAWACCEL_DELAY:
+                self.root.after(float(RAWACCEL_DELAY - self.dt), reset)
+            else:
+                reset()
             self.redraw_graph()
 
 
-    def keybind_trigger(self, a, b = 0, c = 0, d = 0):
+    def keybind_trigger(self, a, _ = 0, x = 0, y = 0):
         if self.dt < RAWACCEL_DELAY:
             return
 
@@ -623,25 +823,22 @@ class rawrand:
             key = a.char if hasattr(a, "char") else str(a)[4:]
 
         elif (self.trigger_dev == trigger_devs.MOUSE):
-            if (not d):
+            if (not y):
                 return
 
-            key = str(c)[7:]
+            key = str(x)[7:]
 
             if key[0] == 'x':
                 key = "mouse" + str(int(key[-1]) + 3)
 
         elif (self.trigger_dev == trigger_devs.SCROLL):
-            if d == 1:
+            if y == 1:
                 key = "mwup"
-
-            elif d == -1:
+            elif y == -1:
                 key = "mwdown"
-
-            elif c == 1:
+            elif x == 1:
                 key = "mwright"
-
-            elif c == -1:
+            elif x == -1:
                 key = "mwleft"
 
         if key == self.keybind.get():
@@ -653,8 +850,9 @@ class rawrand:
         self.dt = 0
         self.prev2 = self.prev
         self.prev = self.sens
-        self.sens = self.senses.popleft()
-        self.senses.append(self.sens)
+        with sens_lock:
+            self.sens = SENSES.popleft()
+            SENSES.append(self.sens)
         set_sens(self.sens.sens)
 
 
@@ -686,22 +884,11 @@ class rawrand:
             self.after_id = self.root.after(100, self.update_loop)
 
 
-def on_exit(code = 0):
-    if app.running and app.dt < RAWACCEL_DELAY:
-        sleep(float(RAWACCEL_DELAY - app.dt) / 1000.0)
-    reset()
-    root.quit()
-    sys.exit(code)
-
-
 if __name__ == "__main__":
     global DEFAULT_MULT
 
-    log = "latest-dump.log"
-    with open(log, "w") as l:
+    with open("latest-dump.log", "w") as l:
         l.write("")
-    sys.stdout = open(log, "a")
-    sys.stderr = open(log, "a")
 
     plt.rcParams["text.color"] = "white"
     plt.rcParams["axes.labelcolor"] = "white"
@@ -723,17 +910,25 @@ if __name__ == "__main__":
     except:
         config = { }
 
-    root : tk.Tk = tk.Tk()
-    root.protocol("WM_DELETE_WINDOW", on_exit)
+    key = key_t()
 
     try:
-        app = rawrand(root, config)
+        twitch_oauth = key.load_password("./.twitch_oauth")
+    except:
+        twitch_oauth = None
+
+    root : tk.Tk = tk.Tk()
+    root.protocol("WM_DELETE_WINDOW", on_exit)
+    app = rawrand(root, config, twitch_oauth)
+
+    try:
         root.mainloop()
 
     except KeyboardInterrupt:
         on_exit()
 
     except Exception as e:
-        print(e)
+        app.force_stop()
+        log_dump(e)
         messagebox.showerror("error", f"{e}")
         on_exit(1)
