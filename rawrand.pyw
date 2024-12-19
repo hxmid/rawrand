@@ -175,11 +175,11 @@ class twitch_listener(commands.Bot):
                     if s.author == self.channel:
                         SENSES.appendleft(s)
                         return
-                        
+
                     for i in range(len(SENSES)):
                         if SENSES[i].author == s.author:
                             return
-                            
+
                         if SENSES[i].author is None:
                             log_dump(f"added {s} at index {i}")
                             SENSES.insert(i, s)
@@ -859,7 +859,8 @@ class rawrand:
         self.prev = self.sens
         with sens_lock:
             self.sens = SENSES.popleft()
-            SENSES.append(self.sens)
+            if self.sens.author is None:
+                SENSES.append(self.sens)
         set_sens(self.sens.sens)
 
 
