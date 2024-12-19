@@ -26,7 +26,9 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 ## known issues
 
-none at this time :)
+- sometimes when stopping the program your sens doesn't auto reset due to the multithreading added by the twitch integration.
+    - i'm not sure where exactly this stems from, so it might take some time until it's fixed
+    - however, closing the program will collectly reset your sens
 
 
 ## features
@@ -74,6 +76,10 @@ none at this time :)
 
 - [ ] built-in writer
     - as of right now, the program just uses rawaccel's writer.exe to write the new senses to the driver, however having a built-in one would reduce dependencies and overhead (i think)
+
+- [ ] custom built mouse driver without delay
+    - not much planning behind this, as this is something that will take a lot of work
+    - the main reason i would want something like this is to eliminate the 1s delay in rawaccel, but i think that's intentionally in place to prevent abuse, so more thinking is required
 
 
 ## installation
