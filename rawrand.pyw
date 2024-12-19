@@ -172,7 +172,14 @@ class twitch_listener(commands.Bot):
 
                 s = sens_t(sens_t.get_multi(sens), self.time, message.author.display_name)
                 with sens_lock:
+                    if s.author == self.channel:
+                        SENSES.appendleft(s)
+                        return
+                        
                     for i in range(len(SENSES)):
+                        if SENSES[i].author == s.author:
+                            return
+                            
                         if SENSES[i].author is None:
                             log_dump(f"added {s} at index {i}")
                             SENSES.insert(i, s)
