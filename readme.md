@@ -17,7 +17,7 @@ random base sensitivity multipliers are generated and then written to the rawacc
 
 ## caveats
 
-- your actual cursor sensitivity changes with the 'random' sensitivity. this makes your sensitivity in ui's very inconsistent, which might make it a bit jarring to due things such as by items or properly align smokes on some one like clove or brimstone in valorant.
+- your actual cursor sensitivity changes with the 'random' sensitivity. this makes your sensitivity in ui's very inconsistent, which might make it a bit jarring to due things such as buy items or properly align smokes on some one like clove or brimstone in valorant.
     - there is no fix for this. this is just the caveat of how rawaccel works.
 
 - when using keybind and game state mode, there is a 1 second delay between event/keybind press and your sens changing, due to rawaccels built-in delay
@@ -168,3 +168,4 @@ make sure to read the readme file, there might be some other changes / new featu
 just make an issue here on the github page. if you can include any steps to reproduce that'd be great
 
 if you have a problem where your sens didn't reset after closing, just run `reset.bat`
+
